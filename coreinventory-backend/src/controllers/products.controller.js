@@ -66,10 +66,10 @@ const getProduct = async (req, res, next) => {
 // POST /api/products
 const createProduct = async (req, res, next) => {
   try {
-    const { name, sku, description, categoryId, unitOfMeasure, minStockLevel, initialStock, warehouseId } = req.body;
+    const { name, sku, description, categoryId, unitOfMeasure, minStockLevel, price, initialStock, warehouseId } = req.body;
 
     const product = await prisma.product.create({
-      data: { name, sku, description, categoryId, unitOfMeasure, minStockLevel: minStockLevel || 0 },
+      data: { name, sku, description, categoryId, unitOfMeasure, minStockLevel: parseFloat(minStockLevel) || 0, price: parseFloat(price) || 0 },
       include: { category: true },
     });
 
@@ -99,11 +99,11 @@ const createProduct = async (req, res, next) => {
 // PUT /api/products/:id
 const updateProduct = async (req, res, next) => {
   try {
-    const { name, description, categoryId, unitOfMeasure, minStockLevel } = req.body;
+    const { name, description, categoryId, unitOfMeasure, minStockLevel, price } = req.body;
 
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data: { name, description, categoryId, unitOfMeasure, minStockLevel },
+      data: { name, description, categoryId, unitOfMeasure, minStockLevel: minStockLevel !== undefined ? parseFloat(minStockLevel) : undefined, price: price !== undefined ? parseFloat(price) : undefined },
       include: { category: true },
     });
     return success(res, product, "Product updated.");

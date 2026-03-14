@@ -76,17 +76,20 @@ export const Input = forwardRef(
 );
 
 // ── Select ──────────────────────────────────────────────────────────
-export const Select = ({ label, error, className, children, ...props }) => (
-  <div className="w-full">
-    {label && <label className="label">{label}</label>}
-    <select
-      className={cn("input", error && "border-red-500/50", className)}
-      {...props}
-    >
-      {children}
-    </select>
-    {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
-  </div>
+export const Select = forwardRef(
+  ({ label, error, className, children, ...props }, ref) => (
+    <div className="w-full">
+      {label && <label className="label">{label}</label>}
+      <select
+        ref={ref}
+        className={cn("input", error && "border-red-500/50", className)}
+        {...props}
+      >
+        {children}
+      </select>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  )
 );
 
 // ── Textarea ─────────────────────────────────────────────────────────
