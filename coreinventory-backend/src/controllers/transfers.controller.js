@@ -92,7 +92,7 @@ const createTransfer = async (req, res, next) => {
         lines: {
           create: lines.map((l) => ({
             productId: l.productId,
-            quantity: l.quantity,
+            quantity: parseFloat(l.quantity),
           })),
         },
       },
@@ -127,7 +127,7 @@ const updateTransfer = async (req, res, next) => {
         data: lines.map((l) => ({
           transferId: req.params.id,
           productId: l.productId,
-          quantity: l.quantity,
+          quantity: parseFloat(l.quantity),
         })),
       });
     }

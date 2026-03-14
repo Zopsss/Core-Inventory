@@ -71,9 +71,10 @@ const createAdjustment = async (req, res, next) => {
             locationId:  l.locationId || null,
           },
         });
+        const countedQty = parseFloat(l.countedQty) || 0;
         const systemQty = stockItem ? stockItem.quantity : 0;
-        const difference = l.countedQty - systemQty;
-        return { ...l, systemQty, difference };
+        const difference = countedQty - systemQty;
+        return { ...l, countedQty, systemQty, difference };
       })
     );
 
@@ -127,8 +128,10 @@ const updateAdjustment = async (req, res, next) => {
               locationId:  l.locationId || null,
             },
           });
+          const countedQty = parseFloat(l.countedQty) || 0;
           const systemQty = stockItem ? stockItem.quantity : 0;
-          return { ...l, systemQty, difference: l.countedQty - systemQty };
+          const difference = countedQty - systemQty;
+          return { ...l, countedQty, systemQty, difference };
         })
       );
 
