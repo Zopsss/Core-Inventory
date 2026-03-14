@@ -25,7 +25,7 @@ const COOKIE_OPTIONS = {
 
 export async function signup(
   req: Request<object, object, SignupBody>,
-  res: Response
+  res: Response,
 ): Promise<void> {
   const { name, email, password } = req.body;
 
@@ -36,14 +36,12 @@ export async function signup(
   }
 
   if (password.length < 6) {
-    res
-      .status(400)
-      .json({ message: "Password must be at least 6 characters" });
+    res.status(400).json({ message: "Password must be at least 6 characters" });
     return;
   }
 
   // Check if user already exists
-  const existingUser = findUserByEmail(email);
+  const existingUser = await findUserByEmail(email);
   if (existingUser) {
     res.status(409).json({ message: "Email is already registered" });
     return;
@@ -51,7 +49,7 @@ export async function signup(
 
   // Hash password and create user
   const hashedPassword = await hashPassword(password);
-  const user = createUser(email, hashedPassword, name);
+  const user = await createUser(email, hashedPassword, name);
 
   // Generate JWT and set cookie
   const token = generateToken({ userId: user.id, email: user.email });
@@ -70,7 +68,7 @@ export async function signup(
 
 export async function login(
   req: Request<object, object, LoginBody>,
-  res: Response
+  res: Response,
 ): Promise<void> {
   const { email, password } = req.body;
 
@@ -81,7 +79,7 @@ export async function login(
   }
 
   // Find user
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
   if (!user) {
     res.status(401).json({ message: "Invalid email or password" });
     return;
@@ -116,7 +114,7 @@ export function logout(_req: Request, res: Response): void {
 
 export async function forgotPassword(
   req: Request<object, object, ForgotPasswordBody>,
-  res: Response
+  res: Response,
 ): Promise<void> {
   const { email } = req.body;
 
@@ -125,7 +123,7 @@ export async function forgotPassword(
     return;
   }
 
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
 
   // Always return success to prevent email enumeration
   if (!user) {

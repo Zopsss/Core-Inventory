@@ -1,43 +1,47 @@
-import type { User } from "../types/authTypes.js";
-import crypto from "crypto";
+import type { User } from "../generated/prisma/client.js";
+import prisma from "./prismaClient.js";
 
-// In-memory user store — replace with a real database later
-const users = new Map<string, User>();
-
-// Store for password reset tokens: token → { email, expiresAt }
+// In-memory store for password reset tokens (short-lived, no DB model needed)
 const resetTokens = new Map<
   string,
   { email: string; expiresAt: Date }
 >();
 
-export function createUser(
+export async function createUser(
   email: string,
   hashedPassword: string,
   name: string
-): User {
-  const user: User = {
-    id: crypto.randomUUID(),
-    email: email.toLowerCase(),
-    password: hashedPassword,
-    name,
-    createdAt: new Date(),
-  };
-  users.set(user.email, user);
-  return user;
+): Promise<User> {
+  return prisma.user.create({
+    data: {
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      name,
+    },
+  });
 }
 
-export function findUserByEmail(email: string): User | undefined {
-  return users.get(email.toLowerCase());
+export async function findUserByEmail(
+  email: string
+): Promise<User | null> {
+  return prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
 }
 
-export function updateUserPassword(
+export async function updateUserPassword(
   email: string,
   newHashedPassword: string
-): boolean {
-  const user = users.get(email.toLowerCase());
-  if (!user) return false;
-  user.password = newHashedPassword;
-  return true;
+): Promise<boolean> {
+  try {
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { password: newHashedPassword },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function storeResetToken(email: string, token: string): void {
