@@ -73,7 +73,7 @@ const createDelivery = async (req, res, next) => {
         lines: {
           create: lines.map((l) => ({
             productId: l.productId,
-            orderedQty: l.orderedQty,
+            orderedQty: Number(l.orderedQty),
             deliveredQty: 0,
             warehouseId: l.warehouseId || null,
           })),
@@ -105,8 +105,8 @@ const updateDelivery = async (req, res, next) => {
         data: lines.map((l) => ({
           deliveryId: req.params.id,
           productId: l.productId,
-          orderedQty: l.orderedQty,
-          deliveredQty: l.deliveredQty || 0,
+          orderedQty: Number(l.orderedQty),
+          deliveredQty: Number(l.deliveredQty || 0),
           warehouseId: l.warehouseId || null,
         })),
       });
