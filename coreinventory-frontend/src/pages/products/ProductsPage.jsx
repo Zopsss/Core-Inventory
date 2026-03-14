@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { Plus, Package, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { productsApi } from "@/api";
 import {
   PageHeader, Button, Table, Badge, Modal, Input, Select, Textarea,
-  SearchBar, Pagination, Confirm, Empty, Spinner,
+  SearchBar, Pagination, Confirm
 } from "@/components/ui";
 import { fmtDate, getErrMsg } from "@/utils";
 
@@ -16,7 +16,7 @@ function ProductForm({ product, categories, onClose }) {
   const qc = useQueryClient();
   const isEdit = !!product;
   const { register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: product || { unitOfMeasure: "PIECE", minStockLevel: 0 },
+    defaultValues: product || { unitOfMeasure: "PIECE", minStockLevel: 0, price: 0 },
   });
 
   const mut = useMutation(
@@ -51,6 +51,7 @@ function ProductForm({ product, categories, onClose }) {
         <Select label="Unit of measure" {...register("unitOfMeasure")}>
           {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
         </Select>
+        <Input label="Price" type="number" step="0.01" {...register("price")} />
         <Input label="Min stock level" type="number" step="0.01" {...register("minStockLevel")} />
         {!isEdit && (
           <Input label="Initial stock (optional)" type="number" step="0.01" {...register("initialStock")} />
@@ -98,6 +99,7 @@ export default function ProductsPage() {
     )},
     { key: "category", label: "Category", render: (r) => r.category?.name ?? "—" },
     { key: "unitOfMeasure", label: "Unit" },
+    { key: "price", label: "Price", render: (r) => r.price != null ? `$${Number(r.price).toFixed(2)}` : "—" },
     { key: "stock", label: "Total stock", render: (r) => {
       const total = r.stockItems?.reduce((s, i) => s + i.quantity, 0) ?? 0;
       const low   = total <= r.minStockLevel;

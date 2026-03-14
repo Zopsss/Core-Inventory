@@ -94,8 +94,8 @@ router.post(
     body("sku").trim().notEmpty().withMessage("SKU is required."),
     body("categoryId").isUUID().withMessage("Valid categoryId required."),
     body("unitOfMeasure").notEmpty(),
-    body("minStockLevel").optional().isFloat({ min: 0 }),
-    body("initialStock").optional().isFloat({ min: 0 }),
+    body("minStockLevel").optional({ values: "falsy" }).isFloat({ min: 0 }),
+    body("initialStock").optional({ values: "falsy" }).isFloat({ min: 0 }),
   ],
   validate,
   ctrl.createProduct
