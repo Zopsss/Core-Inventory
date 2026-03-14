@@ -1,0 +1,383 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum UserRole {
+  INVENTORY_MANAGER
+  WAREHOUSE_STAFF
+  ADMIN
+}
+
+enum OperationStatus {
+  DRAFT
+  WAITING
+  READY
+  DONE
+  CANCELED
+}
+
+enum TransferType {
+  RECEIPT
+  DELIVERY
+  INTERNAL
+  ADJUSTMENT
+}
+
+enum AdjustmentReason {
+  DAMAGED
+  LOST
+  FOUND
+  EXPIRED
+  CORRECTION
+  OTHER
+}
+
+enum UnitOfMeasure {
+  KG
+  GRAM
+  LITER
+  ML
+  PIECE
+  BOX
+  METER
+  CM
+  DOZEN
+  PACK
+}
+
+// ─────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          UserRole @default(WAREHOUSE_STAFF)
+  isActive      Boolean  @default(true)
+  otpCode       String?
+  otpExpiresAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  receipts        Receipt[]
+  deliveries      DeliveryOrder[]
+  transfers       InternalTransfer[]
+  adjustments     StockAdjustment[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// WAREHOUSE & LOCATIONS
+// ─────────────────────────────────────────
+
+model Warehouse {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  locations   Location[]
+  stockItems  StockItem[]
+
+  sourceTransfers      InternalTransfer[] @relation("SourceWarehouse")
+  destinationTransfers InternalTransfer[] @relation("DestinationWarehouse")
+
+  @@map("warehouses")
+}
+
+model Location {
+  id          String    @id @default(uuid())
+  name        String
+  code        String
+  warehouseId String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  stockItems  StockItem[]
+
+  sourceTransfers      InternalTransfer[] @relation("SourceLocation")
+  destinationTransfers InternalTransfer[] @relation("DestinationLocation")
+
+  @@unique([warehouseId, code])
+  @@map("locations")
+}
+
+// ─────────────────────────────────────────
+// PRODUCTS
+// ─────────────────────────────────────────
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  name          String
+  sku           String        @unique
+  description   String?
+  categoryId    String
+  unitOfMeasure UnitOfMeasure @default(PIECE)
+  minStockLevel Float         @default(0)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  category        Category         @relation(fields: [categoryId], references: [id])
+  stockItems      StockItem[]
+  receiptLines    ReceiptLine[]
+  deliveryLines   DeliveryLine[]
+  transferLines   TransferLine[]
+  adjustmentLines AdjustmentLine[]
+  reorderRules    ReorderRule[]
+
+  @@map("products")
+}
+
+// ─────────────────────────────────────────
+// STOCK
+// ─────────────────────────────────────────
+
+model StockItem {
+  id          String    @id @default(uuid())
+  productId   String
+  warehouseId String
+  locationId  String?
+  quantity    Float     @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  location    Location? @relation(fields: [locationId], references: [id])
+
+  @@unique([productId, warehouseId, locationId])
+  @@map("stock_items")
+}
+
+model StockLedger {
+  id              String       @id @default(uuid())
+  productId       String
+  warehouseId     String
+  locationId      String?
+  quantityChange  Float
+  quantityAfter   Float
+  referenceType   TransferType
+  referenceId     String
+  notes           String?
+  createdAt       DateTime     @default(now())
+  createdBy       String?
+
+  @@map("stock_ledger")
+}
+
+model ReorderRule {
+  id              String   @id @default(uuid())
+  productId       String
+  minQty          Float
+  maxQty          Float
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product         Product  @relation(fields: [productId], references: [id])
+
+  @@map("reorder_rules")
+}
+
+// ─────────────────────────────────────────
+// SUPPLIERS
+// ─────────────────────────────────────────
+
+model Supplier {
+  id          String    @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  receipts    Receipt[]
+
+  @@map("suppliers")
+}
+
+// ─────────────────────────────────────────
+// RECEIPTS (Incoming)
+// ─────────────────────────────────────────
+
+model Receipt {
+  id          String          @id @default(uuid())
+  reference   String          @unique
+  supplierId  String
+  status      OperationStatus @default(DRAFT)
+  notes       String?
+  validatedAt DateTime?
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  supplier    Supplier    @relation(fields: [supplierId], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  lines       ReceiptLine[]
+
+  @@map("receipts")
+}
+
+model ReceiptLine {
+  id              String   @id @default(uuid())
+  receiptId       String
+  productId       String
+  expectedQty     Float
+  receivedQty     Float    @default(0)
+  unitCost        Float?
+  createdAt       DateTime @default(now())
+
+  receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
+
+  @@map("receipt_lines")
+}
+
+// ─────────────────────────────────────────
+// DELIVERY ORDERS (Outgoing)
+// ─────────────────────────────────────────
+
+model DeliveryOrder {
+  id              String          @id @default(uuid())
+  reference       String          @unique
+  customerName    String
+  customerEmail   String?
+  status          OperationStatus @default(DRAFT)
+  notes           String?
+  pickedAt        DateTime?
+  packedAt        DateTime?
+  validatedAt     DateTime?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  createdBy       User          @relation(fields: [createdById], references: [id])
+  lines           DeliveryLine[]
+
+  @@map("delivery_orders")
+}
+
+model DeliveryLine {
+  id              String        @id @default(uuid())
+  deliveryId      String
+  productId       String
+  orderedQty      Float
+  deliveredQty    Float         @default(0)
+  warehouseId     String?
+  createdAt       DateTime      @default(now())
+
+  delivery        DeliveryOrder @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id])
+
+  @@map("delivery_lines")
+}
+
+// ─────────────────────────────────────────
+// INTERNAL TRANSFERS
+// ─────────────────────────────────────────
+
+model InternalTransfer {
+  id                  String          @id @default(uuid())
+  reference           String          @unique
+  sourceWarehouseId   String
+  sourceLocationId    String?
+  destWarehouseId     String
+  destLocationId      String?
+  status              OperationStatus @default(DRAFT)
+  scheduledAt         DateTime?
+  completedAt         DateTime?
+  notes               String?
+  createdById         String
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  sourceWarehouse     Warehouse  @relation("SourceWarehouse",     fields: [sourceWarehouseId], references: [id])
+  sourceLocation      Location?  @relation("SourceLocation",      fields: [sourceLocationId],  references: [id])
+  destWarehouse       Warehouse  @relation("DestinationWarehouse", fields: [destWarehouseId],   references: [id])
+  destLocation        Location?  @relation("DestinationLocation",  fields: [destLocationId],    references: [id])
+  createdBy           User       @relation(fields: [createdById], references: [id])
+  lines               TransferLine[]
+
+  @@map("internal_transfers")
+}
+
+model TransferLine {
+  id          String           @id @default(uuid())
+  transferId  String
+  productId   String
+  quantity    Float
+  createdAt   DateTime         @default(now())
+
+  transfer    InternalTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product     Product          @relation(fields: [productId], references: [id])
+
+  @@map("transfer_lines")
+}
+
+// ─────────────────────────────────────────
+// STOCK ADJUSTMENTS
+// ─────────────────────────────────────────
+
+model StockAdjustment {
+  id          String          @id @default(uuid())
+  reference   String          @unique
+  status      OperationStatus @default(DRAFT)
+  notes       String?
+  validatedAt DateTime?
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  createdBy   User             @relation(fields: [createdById], references: [id])
+  lines       AdjustmentLine[]
+
+  @@map("stock_adjustments")
+}
+
+model AdjustmentLine {
+  id              String           @id @default(uuid())
+  adjustmentId    String
+  productId       String
+  warehouseId     String
+  locationId      String?
+  countedQty      Float
+  systemQty       Float
+  difference      Float
+  reason          AdjustmentReason @default(CORRECTION)
+  createdAt       DateTime         @default(now())
+
+  adjustment      StockAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Cascade)
+  product         Product          @relation(fields: [productId], references: [id])
+
+  @@map("adjustment_lines")
+}
