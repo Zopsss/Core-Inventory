@@ -4,5 +4,8 @@ import { isAuthAtom } from "@/atoms";
 
 export default function AuthGuard() {
   const isAuth = useAtomValue(isAuthAtom);
-  return isAuth ? <Outlet /> : <Navigate to="/login" replace />;
+  const rawToken = localStorage.getItem("ci_token");
+  const hasTokenFallback = rawToken && rawToken !== "null";
+
+  return (isAuth || hasTokenFallback) ? <Outlet /> : <Navigate to="/login" replace />;
 }
